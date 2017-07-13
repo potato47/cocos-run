@@ -17,16 +17,7 @@ cc.Class({
 
     // use this for initialization
     onLoad: function () {
-        let physicsManager = cc.director.getPhysicsManager();
-        physicsManager.enabled = true;
 
-        physicsManager.debugDrawFlags = 0;
-        // 0;
-        // cc.PhysicsManager.DrawBits.e_aabbBit |
-        // cc.PhysicsManager.DrawBits.e_pairBit |
-        // cc.PhysicsManager.DrawBits.e_centerOfMassBit |
-        // cc.PhysicsManager.DrawBits.e_jointBit |
-        // cc.PhysicsManager.DrawBits.e_shapeBit;
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
 
@@ -39,6 +30,13 @@ cc.Class({
         this.body = this.getComponent(cc.RigidBody);
 
         this.playerAnim = this.getComponent(cc.Animation);
+    },
+
+    init(gameCtl) {
+        this.gameCtl = gameCtl;
+        // this.body.linearVelocity = cc.p(this.speedX,0);
+        this.playerAnim.play('run');
+         cc.testPlayer = this;
     },
 
     onKeyDown(event) {
@@ -67,6 +65,7 @@ cc.Class({
                 this.playerAnim.play('run');
                 break;
             case cc.KEY.up:
+            case cc.KEY.space:
                 if (!this._upPressed) {
                     this._up = true;
                 }
@@ -79,9 +78,9 @@ cc.Class({
                 if (this.jumps > 0 && this._up) {
                     speed.y = this.jumpSpeed;
                     this.jumps--;
-                    if(this.jumps == 1){
+                    if (this.jumps == 1) {
                         this.playerAnim.play('jump');
-                    }else if(this.jumps == 0){
+                    } else if (this.jumps == 0) {
                         this.playerAnim.play('roll');
                     }
                 }
@@ -104,7 +103,19 @@ cc.Class({
                 this._moveFlags &= ~MOVE_RIGHT;
                 break;
             case cc.KEY.up:
+            case cc.KEY.space:
                 this._upPressed = false;
+                break;
+        }
+    },
+
+    onBeginContact(contact, self, other) {
+        switch (other.tag) {
+            case 666:
+                this.playerAnim.play('run');
+                break;
+            case 777:
+                this.gameCtl.onPlayerContactBoundline();
                 break;
         }
     },
