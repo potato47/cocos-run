@@ -25,12 +25,12 @@ cc.Class({
     },
 
     start(){
-        this.bgCtl.init(this);
+        // this.bgCtl.init(this);
         this.playerCtl.init(this);
     },
 
     onPlayerContactBoundline(){
-        this.bgCtl.updateBg();
+        // this.bgCtl.updateBg();
     },
     
 });

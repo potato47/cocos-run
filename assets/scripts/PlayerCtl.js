@@ -1,5 +1,73 @@
 const MOVE_LEFT = 1;
 const MOVE_RIGHT = 2;
+const StateMachine = require('state-machine');
+const FSM = StateMachine.factory({
+    init: 'none',
+    data: function (player) {
+        return {
+            player: player
+        }
+    },
+    transitions: [{
+            name: 'start',
+            from: 'none',
+            to: 'running',
+        },
+        {
+            name: 'jump1',
+            from: 'running',
+            to: 'jumping1'
+        },
+        {
+            name: 'jump2',
+            from: 'jumping1',
+            to: 'jumping2'
+        },
+        {
+            name: 'drop',
+            from: ['jumping1', 'jumping2'],
+            to: 'droping'
+        },
+        {
+            name: 'land',
+            from: ['jumping1', 'jumping2', 'droping'],
+            to: 'running'
+        }
+    ],
+    methods: {
+        onStart() {
+            this.player.playerAnim.play('run');
+        },
+
+        onJump1: function () {
+            this.player.playerAnim.play('jump');
+            let speed = this.player.body.linearVelocity;
+            speed.y = this.player.jumpSpeed;
+            this.player.body.linearVelocity = speed;
+
+        },
+        onJump2: function () {
+            this.player.playerAnim.play('roll');
+            let speed = this.player.body.linearVelocity;
+            speed.y = this.player.jumpSpeed;
+            this.player.body.linearVelocity = speed;
+        },
+        onDrop: function () {
+            this.player.body.gravityScale = 20;
+        },
+        onLand: function () {
+            this.player.body.gravityScale = 6;
+            this.player.playerAnim.play('run');
+        },
+        // onEnterDroping(){
+        //     this.player.shadowNode.active = true;
+        //     this.player.shadowNode.position = this.player.node.convertToWorldSpaceAR();
+        // },
+        // onLeaveDroping(){
+        //     this.player.shadowNode.active = false;
+        // }
+    }
+});
 
 cc.macro.ENABLE_TILEDMAP_CULLING = false;
 
@@ -7,104 +75,40 @@ cc.Class({
     extends: cc.Component,
 
     properties: {
-        maxSpeed: 500,
-        jumps: 2,
-        maxJumps: 3,
-        acceleration: 1500,
         jumpSpeed: 200,
-        drag: 600
+        shadowNode: cc.Node,
     },
 
-    // use this for initialization
     onLoad: function () {
-
+        cc.testPlayer = this;
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
-        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
-
-        this._moveFlags = 0;
-
-        this._up = false;
-
-        this.speedX = 200;
 
         this.body = this.getComponent(cc.RigidBody);
 
         this.playerAnim = this.getComponent(cc.Animation);
+
     },
 
     init(gameCtl) {
         this.gameCtl = gameCtl;
-        // this.body.linearVelocity = cc.p(this.speedX,0);
-        this.playerAnim.play('run');
-         cc.testPlayer = this;
+        this.fsm = new FSM(this);
+        this.fsm.start();
     },
 
     onKeyDown(event) {
-        let speed = this.body.linearVelocity;
         switch (event.keyCode) {
-            case cc.KEY.a:
-            case cc.KEY.left:
-                this._moveFlags |= MOVE_LEFT;
-                if (this.node.scaleX > 0) {
-                    this.node.scaleX *= -1;
-                }
-
-                speed.x = -this.speedX;
-                this.body.linearVelocity = speed;
-                this.playerAnim.play('run');
-                break;
-            case cc.KEY.d:
-            case cc.KEY.right:
-                this._moveFlags |= MOVE_RIGHT;
-                if (this.node.scaleX < 0) {
-                    this.node.scaleX *= -1;
-                }
-
-                speed.x = this.speedX;
-                this.body.linearVelocity = speed;
-                this.playerAnim.play('run');
-                break;
             case cc.KEY.up:
             case cc.KEY.space:
-                if (!this._upPressed) {
-                    this._up = true;
+                if (this.fsm.can('jump1')) {
+                    this.fsm.jump1();
+                } else if (this.fsm.can('jump2')) {
+                    this.fsm.jump2();
                 }
-                this._upPressed = true;
-
-                if (Math.abs(speed.y) < 1) {
-                    this.jumps = this.maxJumps;
+                break;
+            case cc.KEY.down:
+                if (this.fsm.can('drop')) {
+                    this.fsm.drop();
                 }
-
-                if (this.jumps > 0 && this._up) {
-                    speed.y = this.jumpSpeed;
-                    this.jumps--;
-                    if (this.jumps == 1) {
-                        this.playerAnim.play('jump');
-                    } else if (this.jumps == 0) {
-                        this.playerAnim.play('roll');
-                    }
-                }
-
-                this._up = false;
-                this.body.linearVelocity = speed;
-                // this.getComponent(cc.RigidBody).linearVelocity.y = 500;
-                break;
-        }
-    },
-
-    onKeyUp(event) {
-        switch (event.keyCode) {
-            case cc.KEY.a:
-            case cc.KEY.left:
-                this._moveFlags &= ~MOVE_LEFT;
-                break;
-            case cc.KEY.d:
-            case cc.KEY.right:
-                this._moveFlags &= ~MOVE_RIGHT;
-                break;
-            case cc.KEY.up:
-            case cc.KEY.space:
-                this._upPressed = false;
                 break;
         }
     },
@@ -112,7 +116,9 @@ cc.Class({
     onBeginContact(contact, self, other) {
         switch (other.tag) {
             case 666:
-                this.playerAnim.play('run');
+                if (this.fsm.can('land')) {
+                    this.fsm.land();
+                }
                 break;
             case 777:
                 this.gameCtl.onPlayerContactBoundline();
@@ -120,4 +126,7 @@ cc.Class({
         }
     },
 
+    lateUpdate(){
+        this.shadowNode.position = this.node.position;
+    }
 });

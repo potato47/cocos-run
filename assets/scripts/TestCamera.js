@@ -3,6 +3,7 @@ const Direction = cc.Enum({
     V: -1,
     ALL: -1
 });
+const RoadCtl = require('RoadCtl');
 cc.Class({
     extends: cc.Camera,
 
@@ -11,10 +12,12 @@ cc.Class({
         dirction: {
             type: Direction,
             default: Direction.ALL,
-        }
+        },
+        roadCtl:RoadCtl,
     },
 
     onLoad() {
+        cc.testCamera = this;
         // this.node.y = 250;
         this.node.x = cc.winSize.width / 2;
         this.node.y = cc.winSize.height / 2;
@@ -36,8 +39,14 @@ cc.Class({
         let targetNodePos = this.node.parent.convertToNodeSpaceAR(targetWorldPos);
         this.node.x = targetNodePos.x + this.offsetX;
 
-        let ratio = targetWorldPos.y / cc.winSize.height;
-        this.zoomRatio = 1 + (0.5 - ratio) * 0.5;
+        // let ratio = targetWorldPos.y / cc.winSize.height;
+        // this.zoomRatio = 1 + (0.5 - ratio) * 0.5;
+
+        let firstRoadNode = this.roadCtl.getFirstRoad();
+        if(firstRoadNode.convertToWorldSpaceAR().x < this.node.x - firstRoadNode.width-this.offsetX){
+            this.roadCtl.removeRoad();
+            this.roadCtl.addRoad();
+        }
     },
 
 });
